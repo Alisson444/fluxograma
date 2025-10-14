@@ -1,299 +1,267 @@
-/* ===========================
-  Taskly - script.js
-  Melhorias: dark mode, concluir, notificações (local), export/import, search, cores por matéria.
-  Observação: Notifications funcionam em HTTPS / localhost.
-============================ */
+/* =========================
+  Firebase Sync + Auth (Google)
+  Cole este bloco NO FINAL do script.js (após as funções existentes).
+  Substitua FIREBASE_CONFIG com seu objeto firebaseConfig do console.
+========================= */
 
-const diasSemana = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as fbSignOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  enableIndexedDbPersistence,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
-// ---------------- utilitários ----------------
-const qs = sel => document.querySelector(sel);
-const qsa = sel => Array.from(document.querySelectorAll(sel));
-const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
-const load = k => JSON.parse(localStorage.getItem(k) || 'null');
+/* ===== CONFIGURE AQUI: cole seu firebaseConfig (do painel Firebase) ===== */
+const FIREBASE_CONFIG = {
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI.firebaseapp.com",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI.appspot.com",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+/* ======================================================================= */
 
-// nextDateForWeekday: dado nome do dia "Segunda-feira" e horário "HH:MM", retorna Date da próxima ocorrência
-function nextDateForWeekday(dayName, timeHHMM) {
-  const today = new Date();
-  const hourMin = timeHHMM.split(':').map(n=>parseInt(n,10));
-  const targetWeekday = diasSemana.indexOf(dayName);
-  if (targetWeekday === -1) return null;
-  const daysAhead = (targetWeekday - today.getDay() + 7) % 7;
-  const candidate = new Date(today);
-  candidate.setDate(today.getDate() + daysAhead);
-  candidate.setHours(hourMin[0], hourMin[1], 0, 0);
-  // if candidate is earlier than now (same day but time passed), schedule for next week
-  if (candidate <= new Date()) candidate.setDate(candidate.getDate() + 7);
-  return candidate;
-}
+let firebaseApp, auth, db;
+function initFirebase() {
+  try {
+    firebaseApp = initializeApp(FIREBASE_CONFIG);
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
 
-// scheduleNotification: calcula ms e faz setTimeout
-const scheduledTimers = [];
-function scheduleNotification(task, idx) {
-  // Only schedule if Notification permission granted
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const when = nextDateForWeekday(task.dia, task.hora);
-  if (!when) return;
-  const minutesBefore = parseInt(task.lembreteMin || 10, 10) || 0;
-  const notifyAt = new Date(when.getTime() - minutesBefore * 60000);
-  const now = new Date();
-  const ms = notifyAt - now;
-  if (ms <= 0 || ms > 1000 * 60 * 60 * 24 * 365) return; // ignore past or insanely far
-  const t = setTimeout(()=> {
-    const title = `⏰ Lembrete: ${task.materia}`;
-    const body = `${task.dia} • ${task.hora} (${minutesBefore} min)`;
-    new Notification(title, { body });
-  }, ms);
-  scheduledTimers.push(t);
-}
+    // Tentar habilitar persistência offline (IndexedDB) para Firestore
+    enableIndexedDbPersistence(db).catch((err) => {
+      console.warn('IndexedDB persistence error:', err && err.code ? err.code : err);
+    });
 
-// cancelScheduledTimers: limpar timers ao recarregar agenda
-function cancelScheduledTimers(){ scheduledTimers.forEach(t => clearTimeout(t)); scheduledTimers.length = 0; }
-
-// ----------------- armazenamento -----------------
-function obterTarefas(){
-  return load('tasks') || [];
-}
-function salvarTarefas(tasks){
-  save('tasks', tasks);
-}
-
-// ----------------- tema -----------------
-function initTheme(){
-  const saved = localStorage.getItem('theme') || 'auto';
-  if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  if (saved === 'light') document.documentElement.removeAttribute('data-theme');
-  // button hookup
-  qs('#theme-toggle').addEventListener('click', ()=>{
-    const current = document.documentElement.getAttribute('data-theme');
-    if (current === 'dark') { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('theme','light'); }
-    else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('theme','dark'); }
-  });
-}
-
-// ----------------- UI Navegação -----------------
-function mostrarTela(id){
-  qsa('.screen').forEach(s => s.classList.remove('active'));
-  qs(`#${id}`).classList.add('active');
-  // update agenda when opening it
-  if (id === 'agenda') carregarAgenda();
-}
-
-// bottom menu
-qsa('.menu-btn').forEach(b => b.addEventListener('click', ()=> mostrarTela(b.dataset.screen)));
-
-
-// ----------------- Form / CRUD -----------------
-function resetForm(){
-  qs('#task-form').reset();
-  qs('#task-index').value = -1;
-  mostrarTela('home');
-}
-
-qs('#task-form').addEventListener('submit', function(e){
-  e.preventDefault();
-  const idx = parseInt(qs('#task-index').value,10);
-  const materia = qs('#materia').value.trim();
-  const cor = qs('#cor').value || '#4CAF50';
-  const dia = qs('#dia').value;
-  const hora = qs('#hora').value;
-  const lembreteMin = parseInt(qs('#lembrete-min').value,10) || 10;
-
-  if (!materia || !hora || !dia) return alert('Preencha todos os campos!');
-
-  const tasks = obterTarefas();
-  if (idx >= 0 && idx < tasks.length){
-    tasks[idx] = { ...tasks[idx], materia, cor, dia, hora, lembreteMin };
-    alert('✏️ Tarefa atualizada!');
-  } else {
-    tasks.push({ materia, cor, dia, hora, lembreteMin, completed:false, createdAt: new Date().toISOString() });
-    alert('✅ Tarefa adicionada!');
+    hookupAuthButtons();
+    console.log('Firebase inicializado.');
+  } catch (err) {
+    console.error('Erro ao inicializar Firebase:', err);
   }
-  salvarTarefas(tasks);
-  resetForm();
-  carregarAgenda();
-});
-
-// Editar
-function abrirEdicao(index){
-  const tasks = obterTarefas();
-  const t = tasks[index];
-  if (!t) return;
-  qs('#task-index').value = index;
-  qs('#materia').value = t.materia;
-  qs('#cor').value = t.cor || '#4CAF50';
-  qs('#dia').value = t.dia;
-  qs('#hora').value = t.hora;
-  qs('#lembrete-min').value = t.lembreteMin || 10;
-  mostrarTela('adicionar-tarefa');
 }
 
-// Excluir
-function excluirTarefa(index){
-  if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
-  const tasks = obterTarefas();
-  tasks.splice(index,1);
-  salvarTarefas(tasks);
-  carregarAgenda();
-}
+/* ---------- Autenticação ---------- */
+const provider = new GoogleAuthProvider();
 
-// Toggle completar
-function toggleCompletar(index, checked){
-  const tasks = obterTarefas();
-  if (!tasks[index]) return;
-  tasks[index].completed = !!checked;
-  tasks[index].completedAt = tasks[index].completed ? new Date().toISOString() : null;
-  salvarTarefas(tasks);
-  carregarAgenda();
-}
-
-// ----------------- Render agenda -----------------
-function carregarAgenda(filterText = ''){
-  cancelScheduledTimers();
-  const tasks = obterTarefas();
-  const container = qs('#agenda-container');
-  container.innerHTML = '';
-
-  // build days order Mon-Sun (or keep starting Sunday?)
-  const daysOrder = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"];
-  daysOrder.forEach(day => {
-    const dayDiv = document.createElement('div');
-    dayDiv.className = 'day-card card';
-    const title = document.createElement('h3');
-    title.textContent = day;
-    dayDiv.appendChild(title);
-
-    const ul = document.createElement('ul');
-    ul.className = 'task-list';
-
-    const tasksDoDia = tasks
-      .map((t,i)=> ({...t, __idx:i}))
-      .filter(t => t.dia === day)
-      .filter(t => t.materia.toLowerCase().includes(filterText.toLowerCase()));
-
-    if (tasksDoDia.length === 0){
-      const p = document.createElement('div');
-      p.style.color = 'var(--muted)';
-      p.textContent = 'Nenhuma tarefa';
-      dayDiv.appendChild(p);
-    } else {
-      tasksDoDia.sort((a,b)=> a.hora.localeCompare(b.hora));
-      tasksDoDia.forEach(t => {
-        const li = renderTaskItem(t);
-        ul.appendChild(li);
-        // schedule notification for each task
-        scheduleNotification(t, t.__idx);
-      });
-      dayDiv.appendChild(ul);
-    }
-    container.appendChild(dayDiv);
-  });
-
-  // stats
-  updateStats(tasks);
-}
-
-// renderTaskItem: cria LI com template
-function renderTaskItem(task){
-  const tpl = qs('#task-template').content.cloneNode(true);
-  const li = tpl.querySelector('li');
-  const checkbox = li.querySelector('.complete-checkbox');
-  const subjectSpan = li.querySelector('.label-subject');
-  const timeSpan = li.querySelector('.label-time');
-  const daySpan = li.querySelector('.label-day');
-  const editBtn = li.querySelector('.btn-edit');
-  const delBtn = li.querySelector('.btn-delete');
-
-  subjectSpan.textContent = task.materia;
-  subjectSpan.style.background = task.cor || '#4CAF50';
-  timeSpan.textContent = `• ${task.hora}`;
-  daySpan.textContent = task.dia;
-
-  checkbox.checked = !!task.completed;
-  if (task.completed) li.classList.add('completed');
-
-  const idx = task.__idx;
-  checkbox.addEventListener('change', (e)=> toggleCompletar(idx, e.target.checked));
-  editBtn.addEventListener('click', ()=> abrirEdicao(idx));
-  delBtn.addEventListener('click', ()=> excluirTarefa(idx));
-
-  return li;
-}
-
-// ----------------- search -----------------
-qs('#search').addEventListener('input', (e)=> {
-  carregarAgenda(e.target.value);
-});
-
-// ----------------- export / import -----------------
-qs('#export-btn').addEventListener('click', ()=> {
-  const data = JSON.stringify(obterTarefas(), null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `taskly-backup-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-});
-
-qs('#import-btn').addEventListener('click', ()=> qs('#import-file').click());
-qs('#import-file').addEventListener('change', (ev) => {
-  const f = ev.target.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+function hookupAuthButtons() {
+  qs('#login-btn').addEventListener('click', async () => {
     try {
-      const imported = JSON.parse(reader.result);
-      if (!Array.isArray(imported)) throw new Error('Formato inválido');
-      if (!confirm('Importar irá substituir suas tarefas atuais. Continuar?')) return;
-      salvarTarefas(imported);
-      carregarAgenda();
-      alert('Importação concluída!');
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged cuidará do resto
     } catch (err) {
-      alert('Erro ao importar: ' + err.message);
+      alert('Erro no login: ' + err.message);
     }
-  };
-  reader.readAsText(f);
-});
+  });
 
-// ----------------- notifications permission -----------------
-qs('#notify-perm').addEventListener('click', async ()=>{
-  if (!("Notification" in window)) return alert('Notificações não são suportadas neste navegador.');
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') alert('🔔 Permissão concedida! Notificações locais serão exibidas quando for hora.');
-  else alert('Permissão negada ou bloqueada.');
-});
+  qs('#logout-btn').addEventListener('click', async () => {
+    await fbSignOut(auth);
+    // localStorage permanece — você pode limpar se quiser
+    alert('🔒 Você saiu.');
+  });
 
-// update stats
-function updateStats(tasks){
-  const total = tasks.length;
-  const done = tasks.filter(t=>t.completed).length;
-  const upcoming = tasks.filter(t => !t.completed).length;
-  qs('#stats-text').textContent = `Total: ${total} • Concluídas: ${done} • Pendentes: ${upcoming}`;
+  // Monitor de estado de autenticação
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Mostrar user UI
+      qs('#login-btn').style.display = 'none';
+      qs('#user-info').style.display = 'inline-flex';
+      qs('#user-name').textContent = user.displayName || user.email;
+      qs('#user-photo').src = user.photoURL || '';
+
+      // Iniciar sincronização
+      startRealtimeSync(user.uid);
+    } else {
+      qs('#login-btn').style.display = 'inline-block';
+      qs('#user-info').style.display = 'none';
+      stopRealtimeSync();
+    }
+  });
 }
 
-// on load
-window.addEventListener('load', ()=>{
-  initTheme();
+/* ---------- Sincronização com Firestore ---------- */
+/*
+Estratégia:
+- Coleção: users/{uid}/tasks
+- Cada tarefa é um documento com ID gerado a partir de createdAt ou um uuid.
+- Ao conectar:
+  1) Pegar local tasks (localStorage)
+  2) Puxar snapshot atual da nuvem
+  3) Fazer merge por createdAt/updatedAt (manter versão mais recente)
+  4) Subscribir onSnapshot para refletir mudanças da nuvem localmente
+  5) Monitorar mudanças locais e enviar para a nuvem (debounced)
+*/
 
-  // restore search state
-  const searchEl = qs('#search');
-  const initialSearch = searchEl.value || '';
-  carregarAgenda(initialSearch);
+let cloudUnsubscribe = null;
+let cloudWriteDebounce = null;
+const DEBOUNCE_MS = 800;
 
-  // set up keyboard: "/" focar busca
-  window.addEventListener('keydown', e => {
-    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
-      e.preventDefault();
-      qs('#search').focus();
+function tasksCollectionRef(uid) {
+  return collection(db, `users/${uid}/tasks`);
+}
+
+// Converte array tasks em map por id (id = createdAt ou índice)
+function tasksArrayToMap(tasks) {
+  const map = {};
+  tasks.forEach(t => {
+    const id = t.id || t.createdAt || (t.materia + '::' + t.dia + '::' + t.hora);
+    map[id] = { ...t, id };
+  });
+  return map;
+}
+function tasksMapToArray(map) {
+  return Object.values(map);
+}
+
+// Basic helper para gravar/atualizar doc individual
+async function writeTaskDoc(uid, task) {
+  // doc id = task.id (recomendo sempre ter id)
+  const id = task.id || task.createdAt || (task.materia + '::' + task.dia + '::' + task.hora);
+  // garante timestamp/updatedAt
+  const data = { ...task, id, updatedAt: new Date().toISOString() };
+  await setDoc(doc(db, `users/${uid}/tasks`, id), data);
+}
+
+// Remove doc
+async function deleteTaskDoc(uid, id){
+  await deleteDoc(doc(db, `users/${uid}/tasks`, id));
+}
+
+/* Merge entre local e cloud:
+   - localTasks: array do localStorage
+   - cloudDocs: array de docs da nuvem
+   Mantemos a versão mais recente por campo updatedAt (ou createdAt se não existir).
+*/
+function mergeTasks(localTasks, cloudDocs) {
+  const localMap = tasksArrayToMap(localTasks || []);
+  const cloudMap = tasksArrayToMap(cloudDocs || []);
+
+  // Une chaves
+  const keys = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+  const merged = {};
+
+  keys.forEach(k => {
+    const l = localMap[k];
+    const c = cloudMap[k];
+    if (l && c) {
+      const lu = l.updatedAt || l.createdAt || null;
+      const cu = c.updatedAt || c.createdAt || null;
+      // preferir o mais recente (comparing ISO strings)
+      if (!lu && !cu) {
+        merged[k] = { ...c, id: k };
+      } else if (!cu) {
+        merged[k] = { ...l, id: k };
+      } else if (!lu) {
+        merged[k] = { ...c, id: k };
+      } else {
+        merged[k] = (lu >= cu) ? { ...l, id: k } : { ...c, id: k };
+      }
+    } else if (l) {
+      merged[k] = { ...l, id: k };
+    } else if (c) {
+      merged[k] = { ...c, id: k };
     }
   });
 
-  // if the page is visible again, update agenda / re-schedule
-  document.addEventListener('visibilitychange', ()=> {
-    if (document.visibilityState === 'visible') carregarAgenda(qs('#search').value);
-  });
+  return tasksMapToArray(merged);
+}
+
+/* Inicia sincronização em tempo real para um usuário */
+function startRealtimeSync(uid) {
+  // 1) Pegar dados locais
+  const local = obterTarefas() || [];
+
+  // 2) Pegar snapshot inicial da nuvem (one-time) e merge
+  (async () => {
+    // pegar docs atuais
+    const snap = await getDocs(tasksCollectionRef(uid));
+    const cloudDocs = snap.docs.map(d => d.data());
+    // merge
+    const merged = mergeTasks(local, cloudDocs);
+    // salvar localmente
+    salvarTarefas(merged);
+    carregarAgenda();
+
+    // Push merged to cloud (write missing/updated docs)
+    merged.forEach(async (t) => {
+      try {
+        await writeTaskDoc(uid, t);
+      } catch (err) {
+        console.warn('Erro ao gravar doc merged:', err);
+      }
+    });
+
+    // subscribe real-time after merge
+    if (cloudUnsubscribe) cloudUnsubscribe();
+    cloudUnsubscribe = onSnapshot(tasksCollectionRef(uid), (qsnap) => {
+      const cloud = qsnap.docs.map(d => d.data());
+      // merge cloud + local again and update localStorage
+      const nowLocal = obterTarefas();
+      const mergedNow = mergeTasks(nowLocal, cloud);
+      salvarTarefas(mergedNow);
+      carregarAgenda();
+    }, (err) => {
+      console.warn('Snapshot error:', err);
+    });
+  })();
+
+  // 3) Observa mudanças locais (localStorage) e escreve na nuvem (debounced)
+  // Para isso interceptamos salvarTarefas: criaremos um observer simples usando setInterval
+  // Simples approach: poll localStorage a cada 2s e push diferenças
+  let lastLocalSerialized = JSON.stringify(local);
+  const pollInterval = 2000;
+  const poller = setInterval(async () => {
+    const current = JSON.stringify(obterTarefas());
+    if (current !== lastLocalSerialized) {
+      lastLocalSerialized = current;
+      // escrever cada tarefa na nuvem
+      const tasks = obterTarefas();
+      // Debounce writes
+      if (cloudWriteDebounce) clearTimeout(cloudWriteDebounce);
+      cloudWriteDebounce = setTimeout(async () => {
+        try {
+          for (const t of tasks) {
+            await writeTaskDoc(uid, t);
+          }
+          // Optionally delete cloud docs removed locally (if you want)
+          // For safety, we don't auto-delete here.
+        } catch (err) {
+          console.warn('Erro escrevendo tarefas para a nuvem:', err);
+        }
+      }, DEBOUNCE_MS);
+    }
+  }, pollInterval);
+
+  // Guardar referência para parar depois
+  startRealtimeSync._poller = poller;
+}
+
+/* Para a sincronização quando usuário desloga */
+function stopRealtimeSync() {
+  if (cloudUnsubscribe) { cloudUnsubscribe(); cloudUnsubscribe = null; }
+  if (startRealtimeSync._poller) { clearInterval(startRealtimeSync._poller); startRealtimeSync._poller = null; }
+}
+
+/* ---------- Inicialização Firebase no carregamento ---------- */
+window.addEventListener('load', () => {
+  // só inicializa se FIREBASE_CONFIG preenchido
+  const ready = FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId;
+  if (!ready) {
+    console.warn('Firebase config não preenchido. Pule a integração ou cole o firebaseConfig.');
+    return;
+  }
+  initFirebase();
 });
