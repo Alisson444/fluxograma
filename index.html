@@ -1,61 +1,126 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>App de Tarefas | Estudantes</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Taskly • App de Tarefas - Estudantes</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135789.png">
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135789.png" />
+  <!-- PWA manifest (opcional) -->
+  <link rel="manifest" href="manifest.json" />
 </head>
 <body>
-  <header>
-    <h1>📘 App de Tarefas - Estudantes</h1>
+  <header class="topbar">
+    <div class="brand">
+      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135789.png" alt="logo" class="logo">
+      <h1>Taskly</h1>
+    </div>
+
+    <div class="controls">
+      <input id="search" type="search" placeholder="Buscar matéria..." aria-label="Buscar tarefas">
+      <button id="export-btn" class="icon-btn" title="Exportar tarefas">⬇︎</button>
+      <input id="import-file" type="file" accept=".json" style="display:none;">
+      <button id="import-btn" class="icon-btn" title="Importar tarefas">⬆︎</button>
+      <button id="theme-toggle" class="icon-btn" title="Alternar tema">🌓</button>
+      <button id="notify-perm" class="icon-btn" title="Permitir notificações">🔔</button>
+    </div>
   </header>
 
-  <main>
-    <!-- Tela Inicial -->
-    <section id="home" class="tela active">
-      <h2>Bem-vindo!</h2>
-      <p>Organize seus estudos e mantenha sua rotina em dia.</p>
-      <button class="btn" onclick="mostrarTela('adicionar-tarefa')">➕ Adicionar Tarefa</button>
-      <button class="btn" onclick="mostrarTela('agenda')">📅 Ver Agenda</button>
+  <main class="main">
+    <!-- MENU estilo app -->
+    <nav class="bottom-menu">
+      <button class="menu-btn" data-screen="home">🏠 Home</button>
+      <button class="menu-btn" data-screen="adicionar-tarefa">➕ Nova</button>
+      <button class="menu-btn" data-screen="agenda">📅 Agenda</button>
+    </nav>
+
+    <!-- HOME -->
+    <section id="home" class="screen active">
+      <div class="welcome card">
+        <h2>Bem-vindo ao Taskly</h2>
+        <p>Organize seus estudos. Use o botão <strong>➕ Nova</strong> para adicionar tarefas.</p>
+        <div class="quick-actions">
+          <button class="btn primary" onclick="mostrarTela('adicionar-tarefa')">➕ Nova Tarefa</button>
+          <button class="btn" onclick="mostrarTela('agenda')">📅 Ver Agenda</button>
+        </div>
+      </div>
+
+      <div class="stats card">
+        <h3>Resumo</h3>
+        <p id="stats-text">Carregando...</p>
+      </div>
     </section>
 
-    <!-- Tela de Adicionar Tarefa -->
-    <section id="adicionar-tarefa" class="tela">
-      <h2>Nova Tarefa</h2>
-      <form id="task-form">
-        <label for="materia">Matéria:</label>
-        <input type="text" id="materia" name="materia" placeholder="Ex: Matemática" required />
+    <!-- ADICIONAR TAREFA -->
+    <section id="adicionar-tarefa" class="screen">
+      <div class="card">
+        <h2>Adicionar / Editar Tarefa</h2>
+        <form id="task-form" class="form">
+          <input type="hidden" id="task-index" value="-1">
+          <label>Matéria
+            <input id="materia" type="text" placeholder="Ex: Matemática" required>
+          </label>
 
-        <label for="dia">Dia da Semana:</label>
-        <select id="dia" name="dia" required>
-          <option value="Segunda-feira">Segunda-feira</option>
-          <option value="Terça-feira">Terça-feira</option>
-          <option value="Quarta-feira">Quarta-feira</option>
-          <option value="Quinta-feira">Quinta-feira</option>
-          <option value="Sexta-feira">Sexta-feira</option>
-        </select>
+          <label>Cor (opcional)
+            <input id="cor" type="color" value="#4CAF50">
+          </label>
 
-        <label for="hora">Horário:</label>
-        <input type="time" id="hora" name="hora" required />
+          <label>Dia da Semana
+            <select id="dia" required>
+              <option>Segunda-feira</option>
+              <option>Terça-feira</option>
+              <option>Quarta-feira</option>
+              <option>Quinta-feira</option>
+              <option>Sexta-feira</option>
+              <option>Sábado</option>
+              <option>Domingo</option>
+            </select>
+          </label>
 
-        <button type="submit" class="btn salvar">💾 Salvar Tarefa</button>
-      </form>
-      <button class="btn voltar" onclick="mostrarTela('home')">⬅ Voltar</button>
+          <label>Horário
+            <input id="hora" type="time" required>
+          </label>
+
+          <label>Lembrete antes (min)
+            <input id="lembrete-min" type="number" min="0" value="10">
+          </label>
+
+          <div class="form-actions">
+            <button class="btn primary" type="submit">💾 Salvar</button>
+            <button class="btn" type="button" onclick="resetForm()">Cancelar</button>
+          </div>
+        </form>
+      </div>
     </section>
 
-    <!-- Tela de Agenda -->
-    <section id="agenda" class="tela">
-      <h2>Agenda Semanal</h2>
-      <div id="agenda-container" class="agenda-container"></div>
-      <button class="btn voltar" onclick="mostrarTela('home')">⬅ Voltar</button>
+    <!-- AGENDA -->
+    <section id="agenda" class="screen">
+      <div class="card">
+        <h2>Agenda Semanal</h2>
+        <div id="agenda-container" class="agenda-container"></div>
+      </div>
     </section>
   </main>
 
-  <footer>
-    <p>📚 Desenvolvido por <strong>Seu Nome</strong> — 2025</p>
+  <footer class="footer">
+    <small>© 2025 • Taskly • Feito por você</small>
   </footer>
+
+  <template id="task-template">
+    <li class="task-item">
+      <div class="left">
+        <input type="checkbox" class="complete-checkbox" />
+        <div class="meta">
+          <div class="mat-and-time"><span class="label-subject"></span><span class="label-time"></span></div>
+          <div class="label-day"></div>
+        </div>
+      </div>
+      <div class="right">
+        <button class="icon-btn btn-edit" title="Editar">✏️</button>
+        <button class="icon-btn btn-delete" title="Excluir">🗑️</button>
+      </div>
+    </li>
+  </template>
 
   <script src="script.js"></script>
 </body>
