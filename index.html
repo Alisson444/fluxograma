@@ -4,148 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>App de Tarefas - Estudantes</title>
-  <style>
-    /* Estilos Gerais */
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f4f7f6;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      flex-direction: column;
-      color: #333;
-    }
-
-    h1 {
-      font-size: 2.5em;
-      color: #333;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .btn {
-      display: block;
-      width: 200px;
-      padding: 12px;
-      margin: 20px auto;
-      text-align: center;
-      background-color: #4CAF50;
-      color: white;
-      text-decoration: none;
-      border-radius: 8px;
-      font-size: 1.1em;
-      transition: background-color 0.3s;
-    }
-
-    .btn:hover {
-      background-color: #45a049;
-    }
-
-    .container {
-      width: 90%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    /* Formulário e Inputs */
-    form {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 450px;
-      margin: 0 auto;
-      background-color: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    input, select, button {
-      width: 100%;
-      padding: 12px;
-      margin: 12px 0;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      font-size: 1em;
-    }
-
-    input[type="time"] {
-      font-size: 1.2em;
-    }
-
-    .home, .adicionar-tarefa, .agenda {
-      display: none;
-    }
-
-    .active {
-      display: block;
-    }
-
-    /* Agenda Semanal */
-    .dia {
-      background-color: white;
-      padding: 20px;
-      margin: 20px 0;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .dia h2 {
-      text-align: center;
-      margin-bottom: 15px;
-      font-size: 1.8em;
-    }
-
-    ul {
-      list-style-type: none;
-      padding: 0;
-    }
-
-    li {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    li span {
-      font-size: 1.1em;
-    }
-
-    .editar, .excluir {
-      background-color: transparent;
-      border: none;
-      color: #3498db;
-      cursor: pointer;
-      font-size: 1.1em;
-      transition: color 0.3s;
-    }
-
-    .editar:hover, .excluir:hover {
-      color: #2c3e50;
-    }
-
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Tela Inicial -->
   <div id="home" class="home active">
     <h1>Bem-vindo ao App de Tarefas!</h1>
-    <p>Gerencie suas tarefas de estudo de forma simples e eficaz.</p>
+    <p>Gerencie suas tarefas de estudo de forma simples.</p>
     <button class="btn" onclick="mostrarTela('adicionar-tarefa')">Adicionar Tarefa</button>
     <button class="btn" onclick="mostrarTela('agenda')">Ver Agenda</button>
   </div>
 
+  <!-- Tela de Adicionar Tarefa -->
   <div id="adicionar-tarefa" class="adicionar-tarefa">
     <h1>Adicionar Nova Tarefa</h1>
     <form id="task-form">
       <label for="materia">Matéria:</label>
       <input type="text" id="materia" name="materia" required>
-
+      
       <label for="dia">Dia da Semana:</label>
       <select id="dia" name="dia" required>
         <option value="Segunda-feira">Segunda-feira</option>
@@ -163,81 +39,13 @@
     <button class="btn" onclick="mostrarTela('home')">Voltar</button>
   </div>
 
+  <!-- Tela de Agenda -->
   <div id="agenda" class="agenda">
     <h1>Agenda Semanal</h1>
     <div id="agenda-container"></div>
     <button class="btn" onclick="mostrarTela('home')">Voltar</button>
   </div>
 
-  <script>
-    // Função para mostrar as telas
-    function mostrarTela(tela) {
-      // Esconde todas as telas
-      document.querySelectorAll('.home, .adicionar-tarefa, .agenda').forEach(function(t) {
-        t.classList.remove('active');
-      });
-
-      // Mostra a tela selecionada
-      document.getElementById(tela).classList.add('active');
-    }
-
-    // Carregar tarefas da localStorage e exibir na agenda
-    window.onload = function() {
-      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-      const agendaContainer = document.getElementById('agenda-container');
-
-      const diasDaSemana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
-      let agenda = {};
-
-      // Inicializa o objeto agenda com dias vazios
-      diasDaSemana.forEach(dia => {
-        agenda[dia] = [];
-      });
-
-      // Adiciona as tarefas nos dias corretos
-      tasks.forEach(task => {
-        agenda[task.dia].push(task);
-      });
-
-      // Exibe as tarefas organizadas
-      diasDaSemana.forEach(dia => {
-        const diaDiv = document.createElement('div');
-        diaDiv.classList.add('dia');
-
-        const diaTitulo = document.createElement('h2');
-        diaTitulo.textContent = dia;
-        diaDiv.appendChild(diaTitulo);
-
-        const listaTarefas = document.createElement('ul');
-        agenda[dia].forEach(task => {
-          const li = document.createElement('li');
-          li.innerHTML = `${task.materia} - ${task.hora} 
-                          <button class="editar" onclick="editarTarefa('${task.materia}', '${task.dia}', '${task.hora}')">Editar</button>
-                          <button class="excluir" onclick="excluirTarefa('${task.materia}', '${task.dia}', '${task.hora}')">Excluir</button>`;
-          listaTarefas.appendChild(li);
-        });
-
-        diaDiv.appendChild(listaTarefas);
-        agendaContainer.appendChild(diaDiv);
-      });
-    };
-
-    // Salvar as tarefas no localStorage
-    document.getElementById('task-form').addEventListener('submit', function(event) {
-      event.preventDefault();
-      
-      const materia = document.getElementById('materia').value;
-      const dia = document.getElementById('dia').value;
-      const hora = document.getElementById('hora').value;
-
-      let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-      tasks.push({ materia, dia, hora });
-
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-
-      alert('Tarefa adicionada com sucesso!');
-      mostrarTela('home');  // Redireciona de volta à tela inicial
-    });
-
-    // Função para editar tarefa
-    function editarT
+  <script src="script.js"></script>
+</body>
+</html>
