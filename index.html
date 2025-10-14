@@ -1,50 +1,61 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App de Tarefas - Estudantes</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App de Tarefas | Estudantes</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135789.png">
 </head>
 <body>
-  <!-- Tela Inicial -->
-  <div id="home" class="home active">
-    <h1>Bem-vindo ao App de Tarefas!</h1>
-    <p>Gerencie suas tarefas de estudo de forma simples.</p>
-    <button class="btn" onclick="mostrarTela('adicionar-tarefa')">Adicionar Tarefa</button>
-    <button class="btn" onclick="mostrarTela('agenda')">Ver Agenda</button>
-  </div>
+  <header>
+    <h1>📘 App de Tarefas - Estudantes</h1>
+  </header>
 
-  <!-- Tela de Adicionar Tarefa -->
-  <div id="adicionar-tarefa" class="adicionar-tarefa">
-    <h1>Adicionar Nova Tarefa</h1>
-    <form id="task-form">
-      <label for="materia">Matéria:</label>
-      <input type="text" id="materia" name="materia" required>
-      
-      <label for="dia">Dia da Semana:</label>
-      <select id="dia" name="dia" required>
-        <option value="Segunda-feira">Segunda-feira</option>
-        <option value="Terça-feira">Terça-feira</option>
-        <option value="Quarta-feira">Quarta-feira</option>
-        <option value="Quinta-feira">Quinta-feira</option>
-        <option value="Sexta-feira">Sexta-feira</option>
-      </select>
+  <main>
+    <!-- Tela Inicial -->
+    <section id="home" class="tela active">
+      <h2>Bem-vindo!</h2>
+      <p>Organize seus estudos e mantenha sua rotina em dia.</p>
+      <button class="btn" onclick="mostrarTela('adicionar-tarefa')">➕ Adicionar Tarefa</button>
+      <button class="btn" onclick="mostrarTela('agenda')">📅 Ver Agenda</button>
+    </section>
 
-      <label for="hora">Horário:</label>
-      <input type="time" id="hora" name="hora" required>
+    <!-- Tela de Adicionar Tarefa -->
+    <section id="adicionar-tarefa" class="tela">
+      <h2>Nova Tarefa</h2>
+      <form id="task-form">
+        <label for="materia">Matéria:</label>
+        <input type="text" id="materia" name="materia" placeholder="Ex: Matemática" required />
 
-      <button type="submit" class="btn">Salvar Tarefa</button>
-    </form>
-    <button class="btn" onclick="mostrarTela('home')">Voltar</button>
-  </div>
+        <label for="dia">Dia da Semana:</label>
+        <select id="dia" name="dia" required>
+          <option value="Segunda-feira">Segunda-feira</option>
+          <option value="Terça-feira">Terça-feira</option>
+          <option value="Quarta-feira">Quarta-feira</option>
+          <option value="Quinta-feira">Quinta-feira</option>
+          <option value="Sexta-feira">Sexta-feira</option>
+        </select>
 
-  <!-- Tela de Agenda -->
-  <div id="agenda" class="agenda">
-    <h1>Agenda Semanal</h1>
-    <div id="agenda-container"></div>
-    <button class="btn" onclick="mostrarTela('home')">Voltar</button>
-  </div>
+        <label for="hora">Horário:</label>
+        <input type="time" id="hora" name="hora" required />
+
+        <button type="submit" class="btn salvar">💾 Salvar Tarefa</button>
+      </form>
+      <button class="btn voltar" onclick="mostrarTela('home')">⬅ Voltar</button>
+    </section>
+
+    <!-- Tela de Agenda -->
+    <section id="agenda" class="tela">
+      <h2>Agenda Semanal</h2>
+      <div id="agenda-container" class="agenda-container"></div>
+      <button class="btn voltar" onclick="mostrarTela('home')">⬅ Voltar</button>
+    </section>
+  </main>
+
+  <footer>
+    <p>📚 Desenvolvido por <strong>Seu Nome</strong> — 2025</p>
+  </footer>
 
   <script src="script.js"></script>
 </body>

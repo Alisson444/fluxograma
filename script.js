@@ -1,83 +1,107 @@
-// Função para mostrar as telas
+// Mostrar telas
 function mostrarTela(tela) {
-  // Esconde todas as telas
-  document.querySelectorAll('.home, .adicionar-tarefa, .agenda').forEach(function(t) {
-    t.classList.remove('active');
-  });
-
-  // Mostra a tela selecionada
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('active'));
   document.getElementById(tela).classList.add('active');
+  if (tela === 'agenda') carregarAgenda();
 }
 
-// Função para carregar e exibir as tarefas na agenda
-window.onload = function() {
-  carregarAgenda();
-};
+// Carregar tarefas do localStorage
+function obterTarefas() {
+  return JSON.parse(localStorage.getItem('tasks')) || [];
+}
 
-// Função para carregar as tarefas e exibir na tela de agenda
+// Salvar tarefas
+function salvarTarefas(tasks) {
+  localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+// Exibir agenda
 function carregarAgenda() {
-  const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
   const agendaContainer = document.getElementById('agenda-container');
+  const tasks = obterTarefas();
+  const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
-  const diasDaSemana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
-  let agenda = {};
+  agendaContainer.innerHTML = '';
 
-  // Inicializa o objeto agenda com dias vazios
-  diasDaSemana.forEach(dia => {
-    agenda[dia] = [];
-  });
+  dias.forEach(dia => {
+    const div = document.createElement('div');
+    div.classList.add('dia');
+    const titulo = document.createElement('h3');
+    titulo.textContent = dia;
+    div.appendChild(titulo);
 
-  // Adiciona as tarefas nos dias corretos
-  tasks.forEach(task => {
-    agenda[task.dia].push(task);
-  });
+    const lista = document.createElement('ul');
+    const tarefasDia = tasks.filter(t => t.dia === dia);
 
-  // Exibe as tarefas organizadas
-  agendaContainer.innerHTML = "";  // Limpa a agenda antes de atualizar
+    if (tarefasDia.length === 0) {
+      lista.innerHTML = '<li><span style="color:#aaa;">Nenhuma tarefa</span></li>';
+    } else {
+      tarefasDia.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span><strong>${task.materia}</strong> - ${task.hora}</span>
+          <div>
+            <button class="editar" onclick="editarTarefa(${tasks.indexOf(task)})">Editar</button>
+            <button class="excluir" onclick="excluirTarefa(${tasks.indexOf(task)})">Excluir</button>
+          </div>
+        `;
+        lista.appendChild(li);
+      });
+    }
 
-  diasDaSemana.forEach(dia => {
-    const diaDiv = document.createElement('div');
-    diaDiv.classList.add('dia');
-
-    const diaTitulo = document.createElement('h2');
-    diaTitulo.textContent = dia;
-    diaDiv.appendChild(diaTitulo);
-
-    const listaTarefas = document.createElement('ul');
-    agenda[dia].forEach((task, index) => {
-      const li = document.createElement('li');
-      li.innerHTML = `${task.materia} - ${task.hora} 
-                      <button class="editar" onclick="editarTarefa(${index})">Editar</button>
-                      <button class="excluir" onclick="excluirTarefa(${index})">Excluir</button>`;
-      listaTarefas.appendChild(li);
-    });
-
-    diaDiv.appendChild(listaTarefas);
-    agendaContainer.appendChild(diaDiv);
+    div.appendChild(lista);
+    agendaContainer.appendChild(div);
   });
 }
 
-// Função para salvar a tarefa no localStorage
-document.getElementById('task-form').addEventListener('submit', function(event) {
-  event.preventDefault();
+// Adicionar tarefa
+document.getElementById('task-form').addEventListener('submit', function (e) {
+  e.preventDefault();
 
-  const materia = document.getElementById('materia').value;
+  const materia = document.getElementById('materia').value.trim();
   const dia = document.getElementById('dia').value;
   const hora = document.getElementById('hora').value;
 
-  let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+  if (!materia || !dia || !hora) return alert('Preencha todos os campos!');
+
+  const tasks = obterTarefas();
   tasks.push({ materia, dia, hora });
+  salvarTarefas(tasks);
 
-  localStorage.setItem('tasks', JSON.stringify(tasks));
-
-  alert('Tarefa adicionada com sucesso!');
-  mostrarTela('home');  // Redireciona de volta à tela inicial
-  carregarAgenda(); // Atualiza a agenda
+  alert('✅ Tarefa adicionada com sucesso!');
+  this.reset();
+  mostrarTela('agenda');
 });
 
-// Função para editar uma tarefa
+// Editar tarefa
 function editarTarefa(index) {
-  const tasks = JSON.parse(localStorage.getItem('tasks'));
+  const tasks = obterTarefas();
   const task = tasks[index];
 
-  document.get
+  if (!task) return;
+
+  const novaMateria = prompt('Editar matéria:', task.materia);
+  const novaHora = prompt('Editar horário (HH:MM):', task.hora);
+
+  if (novaMateria && novaHora) {
+    task.materia = novaMateria;
+    task.hora = novaHora;
+    salvarTarefas(tasks);
+    carregarAgenda();
+    alert('✏️ Tarefa atualizada!');
+  }
+}
+
+// Excluir tarefa
+function excluirTarefa(index) {
+  const tasks = obterTarefas();
+  if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
+    tasks.splice(index, 1);
+    salvarTarefas(tasks);
+    carregarAgenda();
+    alert('🗑️ Tarefa excluída.');
+  }
+}
+
+// Atualiza a agenda automaticamente ao carregar
+window.onload = () => carregarAgenda();
