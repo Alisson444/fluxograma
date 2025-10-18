@@ -1,94 +1,98 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Taskly - Organize sua rotina</title>
-
-  <!-- Manifesto para PWA -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <meta name="theme-color" content="#1e1e1e">
-
-  <!-- Firebase SDKs -->
-  <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
-  <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
-  <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fluxograma do Aluno - Sistema Educacional</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-  <header class="topbar">
-    <h1 class="logo">📘 Taskly</h1>
-    <div class="controls">
-      <input id="search" type="search" placeholder="Buscar matéria..." aria-label="Buscar tarefas">
-      <button id="export-btn" class="icon-btn" title="Exportar tarefas">⬇︎</button>
-      <input id="import-file" type="file" accept=".json" style="display:none;">
-      <button id="import-btn" class="icon-btn" title="Importar tarefas">⬆︎</button>
-      <button id="theme-toggle" class="icon-btn" title="Alternar tema">🌓</button>
-      <button id="notify-perm" class="icon-btn" title="Permitir notificações">🔔</button>
-
-      <!-- Área de autenticação -->
-      <div id="auth-area" class="auth-area">
-        <button id="login-btn" class="btn">Entrar com Google</button>
-        <div id="user-info" style="display:none;">
-          <img id="user-photo" src="" alt="user" class="user-photo">
-          <span id="user-name"></span>
-          <button id="logout-btn" class="icon-btn" title="Sair">🚪</button>
-        </div>
-      </div>
-    </div>
+  <header>
+    <h1>Fluxograma do Aluno 🎓</h1>
+    <p>Veja todo o caminho do aluno dentro da plataforma educacional</p>
   </header>
 
   <main>
-    <!-- Tela inicial -->
-    <section id="home" class="screen active">
-      <h2>Bem-vindo ao Taskly</h2>
-      <p>Gerencie suas tarefas e mantenha sua rotina organizada.</p>
-      <button onclick="mostrarTela('add-task')" class="btn">Adicionar tarefa ➕</button>
-      <button onclick="mostrarTela('agenda')" class="btn">Ver agenda 📅</button>
-    </section>
+    <div class="toolbar">
+      <button id="resetBtn">🔄 Reiniciar Fluxo</button>
+    </div>
 
-    <!-- Adicionar tarefa -->
-    <section id="add-task" class="screen">
-      <h2>Nova Tarefa</h2>
-      <form id="task-form">
-        <label>Matéria</label>
-        <input type="text" id="materia" required>
-
-        <label>Cor</label>
-        <input type="color" id="cor" value="#007bff">
-
-        <label>Dia</label>
-        <select id="dia" required>
-          <option>Segunda-feira</option>
-          <option>Terça-feira</option>
-          <option>Quarta-feira</option>
-          <option>Quinta-feira</option>
-          <option>Sexta-feira</option>
-        </select>
-
-        <label>Hora</label>
-        <input type="time" id="hora" required>
-
-        <label>Lembrete (min antes)</label>
-        <input type="number" id="lembrete" value="10" min="1">
-
-        <button type="submit" class="btn">Salvar</button>
-        <button type="button" onclick="mostrarTela('home')" class="btn secondary">Cancelar</button>
-      </form>
-    </section>
-
-    <!-- Agenda -->
-    <section id="agenda" class="screen">
-      <h2>📅 Agenda</h2>
-      <div id="agenda-container"></div>
-      <button onclick="mostrarTela('home')" class="btn secondary">Voltar</button>
-    </section>
+    <div class="fluxo-container">
+      <svg id="fluxo-linhas"></svg>
+      <div id="fluxograma">
+        <div class="node start" data-info="Aluno acessa o site pela primeira vez.">
+          <i data-lucide="home"></i>
+          Início / Acesso ao Site
+        </div>
+        <div class="node action" data-info="Área de login para acesso à plataforma.">
+          <i data-lucide="log-in"></i>
+          Login
+        </div>
+        <div class="node decision" data-info="O aluno esqueceu a senha?">
+          <i data-lucide="help-circle"></i>
+          Esqueceu a senha?
+        </div>
+        <div class="node action" data-info="Processo de redefinição de senha.">
+          <i data-lucide="refresh-ccw"></i>
+          Redefinir Senha
+        </div>
+        <div class="node action" data-info="Formulário de cadastro para novos alunos.">
+          <i data-lucide="user-plus"></i>
+          Cadastro
+        </div>
+        <div class="node action" data-info="Painel principal do aluno.">
+          <i data-lucide="layout-dashboard"></i>
+          Dashboard
+        </div>
+        <div class="node action" data-info="Escolha do curso desejado.">
+          <i data-lucide="book-open"></i>
+          Selecionar Curso
+        </div>
+        <div class="node decision" data-info="O curso já foi iniciado pelo aluno?">
+          <i data-lucide="clock"></i>
+          Curso Iniciado?
+        </div>
+        <div class="node action" data-info="Etapa de aulas teóricas.">
+          <i data-lucide="play-circle"></i>
+          Assistir Aulas
+        </div>
+        <div class="node action" data-info="Realização de atividades e exercícios.">
+          <i data-lucide="edit-3"></i>
+          Realizar Atividades
+        </div>
+        <div class="node decision" data-info="A nota obtida é maior ou igual à média?">
+          <i data-lucide="bar-chart-2"></i>
+          Nota ≥ Média?
+        </div>
+        <div class="node result" data-info="Aluno aprovado no curso!">
+          <i data-lucide="award"></i>
+          Aprovado 🎉
+        </div>
+        <div class="node result" data-info="Aluno deve refazer atividades para reforço.">
+          <i data-lucide="alert-triangle"></i>
+          Reforço Necessário
+        </div>
+        <div class="node decision" data-info="O curso foi concluído com sucesso?">
+          <i data-lucide="check-circle"></i>
+          Curso Concluído?
+        </div>
+        <div class="node result" data-info="Emitir certificado de conclusão.">
+          <i data-lucide="file-certificate"></i>
+          Emitir Certificado 🏅
+        </div>
+        <div class="node result" data-info="Aluno continua estudando até concluir.">
+          <i data-lucide="repeat"></i>
+          Continuar Estudando
+        </div>
+      </div>
+    </div>
   </main>
 
   <footer>
-    <p>Feito com 💙</p>
+    <p>© 2025 Sistema Educacional - Fluxograma Interativo</p>
   </footer>
 
-  <script type="module" src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
